@@ -1,22 +1,16 @@
 import asyncio
 import os
 import json
-import datetime
-
-
+from auth import CoinbaseAuth
 from requests import request
 from websockets import connect
 from dotenv import load_dotenv
 
 load_dotenv('.env')
 
-headers = {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    'cb-access-key': os.getenv('key'),
-    'cb-access-passphrase': os.getenv('passphrase'),
-    'cb-access-timestamp': str(datetime.datetime.now())
-}
+SANDBOX = False
+headers = CoinbaseAuth(os.getenv('key'), os.getenv('secret'), os.getenv('passphrase'))
+
 
 WS_URI = 'wss://ws-feed.exchange.coinbase.com'
 # API_URI = 'https://api.exchange.coinbase.com/orders'
@@ -48,7 +42,6 @@ async def coin_ticker(coin: str, curr: str):
             await asyncio.sleep(1)
             ticker = json.loads(await ws.recv())
             prices[ticker['product_id']] = float(ticker['price'])
-            print(prices)
 
 
 async def unsubscribe():
@@ -103,18 +96,3 @@ async def take_profit():
 # loop.create_task(stop_loss())
 # loop.create_task(take_profit())
 # loop.run_forever()
-
-def test_place_order():
-    payload = {
-        "type": "limit",
-        "side": "buy",
-        "stp": "dc",
-        "stop": "loss",
-    }
-    for key in prices.keys():
-        if prices[key] >= SLTP[key]['take_profit']:
-            payload['price'] = SLTP[key]['take_profit']
-            response = request('POST', API_URI, json=payload, headers=headers)
-            print(response)
-
-# test_place_order()
