@@ -1,23 +1,36 @@
 import asyncio
 import os
 import json
+import datetime
 
 
 from requests import request
 from websockets import connect
 from dotenv import load_dotenv
-import json
 
 load_dotenv('.env')
 
-WS_URI = 'wss://ws-feed.exchange.coinbase.com'
-API_URI = 'https://api.exchange.coinbase.com/orders'
+headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'cb-access-key': os.getenv('key'),
+    'cb-access-passphrase': os.getenv('passphrase'),
+    'cb-access-timestamp': str(datetime.datetime.now())
+}
 
-prices = {}
+WS_URI = 'wss://ws-feed.exchange.coinbase.com'
+# API_URI = 'https://api.exchange.coinbase.com/orders'
+API_URI = 'https://api-public.sandbox.exchange.coinbase.com'
+
+prices = dict()
 SLTP = {
     'ADA-USD': {
         'stop_loss': 1.415,
         'take_profit': 1.51
+    },
+    'BTC-USD': {
+        'stop_loss': 40415,
+        'take_profit': 42551
     }
 }
 
@@ -53,10 +66,6 @@ async def stop_loss():
         "side": "buy",
         "stp": "dc",
     }
-    headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-    }
     while True:
         for key in prices.keys():
             if prices[key] <= SLTP[key]['stop_loss']:
@@ -72,10 +81,6 @@ async def take_profit():
         "stp": "dc",
         "stop": "loss",
     }
-    headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-    }
     while True:
         for key in prices.keys():
             if prices[key] >= SLTP[key]['take_profit']:
@@ -84,17 +89,32 @@ async def take_profit():
                 print(response)
 
 
-loop = asyncio.get_event_loop()
+# loop = asyncio.get_event_loop()
+#
+# coin = 't'
+# curr = ''
+#
+# while coin not in ['', 'n']:
+#     coin = input('Coin 1: ')
+#     if coin in ['', 'n']: break
+#     curr = input('Coin 2/Fiat Currency: ')
+#     loop.create_task(coin_ticker(coin, curr))
+#
+# loop.create_task(stop_loss())
+# loop.create_task(take_profit())
+# loop.run_forever()
 
-coin = 't'
-curr = ''
+def test_place_order():
+    payload = {
+        "type": "limit",
+        "side": "buy",
+        "stp": "dc",
+        "stop": "loss",
+    }
+    for key in prices.keys():
+        if prices[key] >= SLTP[key]['take_profit']:
+            payload['price'] = SLTP[key]['take_profit']
+            response = request('POST', API_URI, json=payload, headers=headers)
+            print(response)
 
-while coin not in ['', 'n']:
-    coin = input('Coin 1: ')
-    if coin in ['', 'n']: break
-    curr = input('Coin 2/Fiat Currency: ')
-    loop.create_task(coin_ticker(coin, curr))
-
-loop.create_task(stop_loss())
-loop.create_task(take_profit())
-loop.run_forever()
+# test_place_order()
