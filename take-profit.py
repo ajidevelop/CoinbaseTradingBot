@@ -1,31 +1,41 @@
 import asyncio
-import time
 
-from websockets import connect, serve
-from threading import Thread
+from websockets import connect
 from dotenv import load_dotenv
-import os
 import json
 
 load_dotenv('.env')
 
-URI = 'ws-feed.exchange.coinbase.com'
+WS_URI = 'wss://ws-feed.exchange.coinbase.com'
+API_URI = 'https://api.exchange.coinbase.com/orders'
+
+prices = {}
+SLTP = {
+    'ADA-USD': {
+        'stop_loss': 1.415,
+        'take_profit': 1.51
+    }
+}
 
 
-async def test_websocket():
-    async with connect(URI) as ws:
+async def coin_ticker(coin: str, curr: str):
+    async with connect(WS_URI, ping_interval=None) as ws:
         data = {
             'type': 'subscribe',
             'channels': ['ticker'],
-            'product_ids': ['BTC-USD'],
+            'product_ids': [f'{coin.upper()}-{curr.upper()}'],
         }
         await ws.send(json.dumps(data))
-
-        print(await ws.recv())
+        await ws.recv()
+        while True:
+            await asyncio.sleep(1)
+            ticker = json.loads(await ws.recv())
+            prices[ticker['product_id']] = float(ticker['price'])
+            print(prices)
 
 
 async def unsubscribe():
-    async with connect(f'wss://{URI}') as ws:
+    async with connect(WS_URI) as ws:
         data = {
             'type': 'unsubscribe',
             'channels': ['heartbeat']
@@ -33,13 +43,32 @@ async def unsubscribe():
         await ws.send(json.dumps(data))
 
 
-def start_loop(loop, server):
-    loop.run_until_complete(server)
-    loop.run_forever()
+async def take_profit():
+    payload = {
+        "type": "limit",
+        "side": "buy",
+        "stp": "dc",
+        "stop": "loss",
+    }
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+    while True:
+        for key in prices.keys():
+            if prices[key] <= SLTP[key]['stop_loss']:
+                pass
 
 
-new_loop = asyncio.new_event_loop()
-start_server = serve(test_websocket, URI, loop=new_loop)
-t = Thread(target=start_loop, args=(new_loop, start_server))
-t.start()
-asyncio.get_event_loop().run_until_complete(test_websocket())
+loop = asyncio.get_event_loop()
+
+coin = 't'
+curr = ''
+
+while coin not in ['', 'n']:
+    coin = input('Coin 1: ')
+    if coin in ['', 'n']: break
+    curr = input('Coin 2/Fiat Currency: ')
+    loop.create_task(coin_ticker(coin, curr))
+
+loop.run_forever()
