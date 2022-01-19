@@ -1,5 +1,5 @@
 import asyncio
-
+from requests import request
 from websockets import connect
 from dotenv import load_dotenv
 import json
@@ -43,6 +43,24 @@ async def unsubscribe():
         await ws.send(json.dumps(data))
 
 
+async def stop_loss():
+    payload = {
+        "type": "limit",
+        "side": "buy",
+        "stp": "dc",
+    }
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+    while True:
+        for key in prices.keys():
+            if prices[key] <= SLTP[key]['stop_loss']:
+                payload['price'] = SLTP[key]['stop_loss']
+                response = request('POST', API_URI, json=payload, headers=headers)
+                print(response)
+
+
 async def take_profit():
     payload = {
         "type": "limit",
@@ -56,8 +74,10 @@ async def take_profit():
     }
     while True:
         for key in prices.keys():
-            if prices[key] <= SLTP[key]['stop_loss']:
-                pass
+            if prices[key] >= SLTP[key]['take_profit']:
+                payload['price'] = SLTP[key]['take_profit']
+                response = request('POST', API_URI, json=payload, headers=headers)
+                print(response)
 
 
 loop = asyncio.get_event_loop()
@@ -71,4 +91,6 @@ while coin not in ['', 'n']:
     curr = input('Coin 2/Fiat Currency: ')
     loop.create_task(coin_ticker(coin, curr))
 
+loop.create_task(stop_loss())
+loop.create_task(take_profit())
 loop.run_forever()
