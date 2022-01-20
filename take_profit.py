@@ -29,6 +29,11 @@ SLTP = {
 }
 
 
+def json_to_file():
+    with open('sltp.json', 'w+') as file:
+        json.dump(SLTP, file)
+
+
 async def coin_ticker(coin: str, curr: str):
     async with connect(WS_URI, ping_interval=None) as ws:
         data = {
@@ -80,19 +85,3 @@ async def take_profit():
                 payload['price'] = SLTP[key]['take_profit']
                 response = request('POST', API_URI, json=payload, headers=headers)
                 print(response)
-
-
-# loop = asyncio.get_event_loop()
-#
-# coin = 't'
-# curr = ''
-#
-# while coin not in ['', 'n']:
-#     coin = input('Coin 1: ')
-#     if coin in ['', 'n']: break
-#     curr = input('Coin 2/Fiat Currency: ')
-#     loop.create_task(coin_ticker(coin, curr))
-#
-# loop.create_task(stop_loss())
-# loop.create_task(take_profit())
-# loop.run_forever()
