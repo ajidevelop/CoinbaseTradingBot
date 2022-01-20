@@ -19,17 +19,13 @@ class ValidInput:
             if self.type is ValidInputType.number:
                 try:
                     self.result = float(self.result)
-                    assert self.result in self.valid_result
+                    assert (self.result in self.valid_result or len(self.valid_result) is 0)
                 except (ValueError, AssertionError) as e:
                     self.result = ''
                     print('Please enter a valid number')
             elif self.type is ValidInputType.str:
-                if self.result not in self.valid_result:
+                if self.result not in self.valid_result and len(self.valid_result) is not 0:
                     self.result = ''
                     print('Please enter a valid input')
 
         return self.result
-
-
-print('Welcome to Coinbase Trading Bot')
-user_input = ValidInput('number', [1, 2]).input('Would you like to:\n1. View SLTP orders\n2. Set SLTP orders: ')
