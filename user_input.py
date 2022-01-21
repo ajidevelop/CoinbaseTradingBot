@@ -1,7 +1,10 @@
 from helpers.valid_input import ValidInput
-from take_profit import stop_loss, take_profit, coin_ticker, SLTP, json_to_file
+from take_profit import StopLossTakeProfit
 import asyncio
-import atexit
+import json
+
+file = open('sltp.json', 'r')
+SLTP = json.load(file)
 
 print('Welcome to Coinbase Trading Bot')
 user_input = ValidInput('number', [1, 2]).input('Would you like to:\n1. Set SLTP orders:\n2. View SLTP orders ')
@@ -17,7 +20,7 @@ if user_input == 1:
         curr = ValidInput('str', []).input('Coin 2/Fiat Currency: ')
 
         if coin in ['', 'n']: break
-        loop.create_task(coin_ticker(coin, curr))
+        loop.create_task(StopLossTakeProfit.coin_ticker(coin, curr))
 
         SL = ValidInput('number', []).input('Stop Loss: ')
         TP = ValidInput('number', []).input('Take Profit: ')
@@ -26,9 +29,9 @@ if user_input == 1:
             'stop_loss': SL,
             'take_profit': TP
         }
+        StopLossTakeProfit.json_to_file(SLTP)
 
-    loop.create_task(stop_loss())
-    loop.create_task(take_profit())
+    loop.create_task(StopLossTakeProfit.stop_loss(SLTP))
+    loop.create_task(StopLossTakeProfit.take_profit(SLTP))
     loop.run_forever()
 
-atexit.register(json_to_file)
