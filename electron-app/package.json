@@ -1,0 +1,14 @@
+{
+  "name": "coinbase-trading-bot",
+  "version": "1.0.0",
+  "description": "Coinbase bot to help with trading",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "Loba",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^16.0.7"
+  }
+}

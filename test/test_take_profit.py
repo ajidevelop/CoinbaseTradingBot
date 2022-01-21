@@ -1,6 +1,6 @@
 import unittest
 import os
-from take_profit import prices, SLTP, CoinbaseAuth
+from take_profit import prices, CoinbaseAuth
 from requests import request
 
 
@@ -15,6 +15,7 @@ class MyTestCase(unittest.TestCase):
             "side": "sell",
             "stp": "dc",
         }
+        SLTP = {}
         for key in prices.keys():
             if prices[key] >= SLTP[key]['take_profit']:
                 payload['price'] = SLTP[key]['take_profit']
