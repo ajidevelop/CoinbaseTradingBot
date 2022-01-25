@@ -16,29 +16,45 @@ WS_URI = 'wss://ws-feed.exchange.coinbase.com'
 # API_URI = 'https://api.exchange.coinbase.com/orders'
 API_URI = 'https://api-public.sandbox.exchange.coinbase.com'
 
-prices = dict()
-
 
 class StopLossTakeProfit:
-    @staticmethod
-    def json_to_file(sltp):
-        with open('sltp.json', 'w+') as file:
-            json.dump(sltp, file)
 
-    @staticmethod
-    async def coin_ticker(coin: str, curr: str):
+    def __init__(self):
+        self._sltp = json.load(open('sltp.json', 'r'))
+        self.prices = dict()
+
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.coin_ticker())
+        loop.create_task(self.stop_loss())
+        loop.create_task(self.take_profit())
+        loop.run_forever()
+
+    @property
+    def sltp(self):
+        return self._sltp
+
+    @sltp.setter
+    def sltp(self, val):
+        print('hello')
+        self._sltp = val
+
+    def json_to_file(self):
+        with open('sltp.json', 'w+') as file:
+            json.dump(self.sltp, file)
+
+    async def coin_ticker(self):
         async with connect(WS_URI, ping_interval=None) as ws:
             data = {
                 'type': 'subscribe',
                 'channels': ['ticker'],
-                'product_ids': [f'{coin.upper()}-{curr.upper()}'],
+                'product_ids': [f'{coin.upper()}-{curr.upper()}' for coin, curr in self.sltp.items()],
             }
             await ws.send(json.dumps(data))
             await ws.recv()
             while True:
                 await asyncio.sleep(1)
                 ticker = json.loads(await ws.recv())
-                prices[ticker['product_id']] = float(ticker['price'])
+                self.prices[ticker['product_id']] = float(ticker['price'])
 
     @staticmethod
     async def unsubscribe():
@@ -49,22 +65,20 @@ class StopLossTakeProfit:
             }
             await ws.send(json.dumps(data))
 
-    @staticmethod
-    async def stop_loss(sltp: dict):
+    async def stop_loss(self):
         payload = {
             "type": "limit",
             "side": "buy",
             "stp": "dc",
         }
         while True:
-            for key in prices.keys():
-                if prices[key] <= sltp[key]['stop_loss']:
-                    payload['price'] = sltp[key]['stop_loss']
+            for key in self.prices.keys():
+                if self.prices[key] <= self.sltp[key]['stop_loss']:
+                    payload['price'] = self.sltp[key]['stop_loss']
                     response = request('POST', API_URI, json=payload, headers=headers)
                     print(response)
 
-    @staticmethod
-    async def take_profit(sltp: dict):
+    async def take_profit(self):
         payload = {
             "type": "limit",
             "side": "buy",
@@ -72,8 +86,8 @@ class StopLossTakeProfit:
             "stop": "loss",
         }
         while True:
-            for key in prices.keys():
-                if prices[key] >= sltp[key]['take_profit']:
-                    payload['price'] = sltp[key]['take_profit']
+            for key in self.prices.keys():
+                if self.prices[key] >= self.sltp[key]['take_profit']:
+                    payload['price'] = self.sltp[key]['take_profit']
                     response = request('POST', API_URI, json=payload, headers=headers)
                     print(response)
