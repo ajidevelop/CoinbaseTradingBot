@@ -2,11 +2,13 @@ import json
 from flask import Flask
 from take_profit import StopLossTakeProfit
 import asyncio
+import threading
 
 app = Flask(__name__)
 
 sltp = StopLossTakeProfit()
-
+# t1 = threading.Thread(target=sltp., name='coin-ticker')
+# t1.start()
 
 @app.get('/get_orders')
 def get_orders():
@@ -23,9 +25,6 @@ def new_order(coin, curr, sl, tp):
 
     return json.load
 
-
-print(sltp.sltp)
-sltp.sltp = {}
-print(sltp.sltp)
-sltp.sltp['test'] = 'test'
-print(sltp.sltp)
+print('works')
+# t1.join()
+sltp.stop_loss()

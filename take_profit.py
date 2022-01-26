@@ -20,23 +20,15 @@ API_URI = 'https://api-public.sandbox.exchange.coinbase.com'
 class StopLossTakeProfit:
 
     def __init__(self):
-        self._sltp = json.load(open('sltp.json', 'r'))
+        self.sltp = json.load(open('sltp.json', 'r'))
         self.prices = dict()
 
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.coin_ticker())
-        loop.create_task(self.stop_loss())
-        loop.create_task(self.take_profit())
-        loop.run_forever()
+        self.loop = asyncio.get_event_loop()
 
-    @property
-    def sltp(self):
-        return self._sltp
-
-    @sltp.setter
-    def sltp(self, val):
-        print('hello')
-        self._sltp = val
+        self.loop.create_task(self.coin_ticker())
+        self.loop.create_task(self.stop_loss())
+        self.loop.create_task(self.take_profit())
+        self.loop.run_forever()
 
     def json_to_file(self):
         with open('sltp.json', 'w+') as file:
@@ -44,6 +36,7 @@ class StopLossTakeProfit:
 
     async def coin_ticker(self):
         async with connect(WS_URI, ping_interval=None) as ws:
+            print('t')
             data = {
                 'type': 'subscribe',
                 'channels': ['ticker'],
@@ -52,6 +45,7 @@ class StopLossTakeProfit:
             await ws.send(json.dumps(data))
             await ws.recv()
             while True:
+                print('t')
                 await asyncio.sleep(1)
                 ticker = json.loads(await ws.recv())
                 self.prices[ticker['product_id']] = float(ticker['price'])
