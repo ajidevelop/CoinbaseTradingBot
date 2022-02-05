@@ -32,6 +32,22 @@ class WebsocketClient(object):
         self.error = None
         self.prices = dict()
 
+    def add_pair(self, pair: dict):  # TODO: Add support for multi-add (take a list and loop through to add into a temp dict then subscribe after)
+        self.products[pair['product_id'].upper()] = pair['sltp']
+        json.dump(open('sltp.json', 'r'))
+        self.ws.send({
+            'type': 'subscribe',
+            'product_ids': pair['product_id'].upper(),
+            'channels': self.channels
+        })
+
+    def remove_pair(self, pair: str):
+        del self.products[pair.upper()]
+        self.ws.send({
+            'type': 'unsubscribe',
+            'product_id': pair.upper()
+        })
+
     def start(self):
         def _go():
             self._connect()
