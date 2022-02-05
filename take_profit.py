@@ -23,7 +23,7 @@ API_URI = 'https://api-public.sandbox.exchange.coinbase.com'
 class WebsocketClient(object):
     def __init__(self):
         self.url = 'wss://ws-feed.exchange.coinbase.com'
-        self.products = json.load(open('sltp.json', 'r'))
+        self._products = json.load(open('sltp.json', 'r'))
         self.channels = None
         self.stop = True
         self.ws = None
@@ -33,8 +33,8 @@ class WebsocketClient(object):
         self.prices = dict()
 
     def add_pair(self, pair: dict):  # TODO: Add support for multi-add (take a list and loop through to add into a temp dict then subscribe after)
-        self.products[pair['product_id'].upper()] = pair['sltp']
-        json.dump(open('sltp.json', 'r'))
+        self._products[pair['product_id'].upper()] = pair['sltp']
+        json.dump(self._products, open('sltp.json', 'r'))
         self.ws.send({
             'type': 'subscribe',
             'product_ids': pair['product_id'].upper(),
@@ -42,7 +42,8 @@ class WebsocketClient(object):
         })
 
     def remove_pair(self, pair: str):
-        del self.products[pair.upper()]
+        del self._products[pair.upper()]
+        json.dump(self._products, open('sltp.json', 'r'))
         self.ws.send({
             'type': 'unsubscribe',
             'product_id': pair.upper()
@@ -60,12 +61,12 @@ class WebsocketClient(object):
         self.thread.start()
 
     def _connect(self):
-        self.products = [f'{coin_pair}' for coin_pair in self.products.keys()]
+        products = [f'{coin_pair}' for coin_pair in self._products.keys()]
 
         if self.channels is None:
             self.channels = ['ticker']
 
-        params = {'type': 'subscribe', 'product_ids': self.products, 'channels': self.channels}
+        params = {'type': 'subscribe', 'product_ids': products, 'channels': self.channels}
 
         self.ws = create_connection(self.url)
         self.ws.send(json.dumps(params))
@@ -110,9 +111,8 @@ class WebsocketClient(object):
     def on_close():
         print("\n-- Socket Closed --")
 
-    @staticmethod
-    def on_message(msg):
-        print(msg)
+    def on_message(self, msg):
+        self.prices[msg['product_id']] = msg['price']
 
     def on_error(self, e, data=None):
         self.error = e
