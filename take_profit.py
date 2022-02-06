@@ -27,24 +27,25 @@ class WebsocketClient(object):
         self.thread = None
         self.keep_alive = None
         self.error = None
-        self.prices = dict()
+        self._prices = dict()
 
     def add_pair(self, pair: dict):  # TODO: Add support for multi-add (take a list and loop through to add into a temp dict then subscribe after)
         self._products[pair['product_id'].upper()] = pair['sltp']
         json.dump(self._products, open('sltp.json', 'r'))
-        self.ws.send({
+        self.ws.send(json.dumps({
             'type': 'subscribe',
             'product_ids': pair['product_id'].upper(),
             'channels': self.channels
-        })
+        }))
 
     def remove_pair(self, pair: str):
         del self._products[pair.upper()]
-        json.dump(self._products, open('sltp.json', 'r'))
-        self.ws.send({
+        del self._prices[pair.upper()]
+        json.dump(self._products, open('sltp.json', 'w'))
+        self.ws.send(json.dumps({
             'type': 'unsubscribe',
             'product_id': pair.upper()
-        })
+        }))
 
     def start(self):
         def _go():
@@ -111,7 +112,7 @@ class WebsocketClient(object):
 
     def on_message(self, msg):
         try:
-            self.prices[msg['product_id']] = float(msg['price'])
+            self._prices[msg['product_id']] = float(msg['price'])
         except KeyError:
             pass
 
@@ -141,6 +142,10 @@ class StopLossTakeProfit(WebsocketClient):
         self.stop_loss = Thread(target=self._stop_loss)
         self.stop_loss.start()
 
+    def close(self):
+        super().close()
+        self.stop_loss.join()
+
     def _stop_loss(self):
         payload = {
             "type": "market",
@@ -149,15 +154,22 @@ class StopLossTakeProfit(WebsocketClient):
         }
         url = f'{self.API_URL}/orders'
         while not self.stop:
-            for key in self.prices.keys():
-                if self.prices[key] <= self._products[key]['stop_loss']:
+            for key in list(self._prices.keys()):
+                if key not in self._products.keys():
+                    del self._prices[key]
+                    continue
+
+                if self._prices[key] <= self._products[key]['stop_loss']:
                     # payload['price'] = self._products[key]['stop_loss'] # TODO add support for limit sell
                     payload['product_id'] = key
                     payload['size'] = 1
                     response = request('POST', url, json=payload, auth=self.headers)
-                    if response.status_code == 401:
-                        print()
                     print(response.content)
+
+                    if response.status_code == 401:
+                        self.on_error(response.status_code, response.content)
+
+                    self.remove_pair(key)
 
     async def take_profit(self):
         payload = {
@@ -167,8 +179,8 @@ class StopLossTakeProfit(WebsocketClient):
             "stop": "loss",
         }
         while True:
-            for key in self.prices.keys():
-                if self.prices[key] >= self.sltp[key]['take_profit']:
+            for key in self._prices.keys():
+                if self._prices[key] >= self.sltp[key]['take_profit']:
                     payload['price'] = self.sltp[key]['take_profit']
                     response = request('POST', API_URI, json=payload, headers=headers)
                     print(response)
