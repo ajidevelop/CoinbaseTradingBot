@@ -1,5 +1,5 @@
 from flask import Flask
-from take_profit import WebsocketClient
+from take_profit import StopLossTakeProfit
 app = Flask(__name__)
 
 
@@ -13,5 +13,5 @@ def new_order(coin, curr, sl, tp):
     pass
 
 
-client = WebsocketClient()
-client.start()
+stop_loss = StopLossTakeProfit(sandbox=True)
+stop_loss.start()

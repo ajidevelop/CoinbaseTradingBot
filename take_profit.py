@@ -1,4 +1,3 @@
-import asyncio
 import os
 import json
 import time
@@ -11,18 +10,16 @@ from dotenv import load_dotenv
 
 load_dotenv('.env')
 
-SANDBOX = False
-headers = CoinbaseAuth(os.getenv('key'), os.getenv('secret'), os.getenv('passphrase'))
-
 
 WS_URI = 'wss://ws-feed.exchange.coinbase.com'
-# API_URI = 'https://api.exchange.coinbase.com/orders'
-API_URI = 'https://api-public.sandbox.exchange.coinbase.com'
+# API_URI =
+
 
 
 class WebsocketClient(object):
     def __init__(self):
-        self.url = 'wss://ws-feed.exchange.coinbase.com'
+        self.WS_URL = 'wss://ws-feed.exchange.coinbase.com'
+        self.API_URL = 'https://api.exchange.coinbase.com'
         self._products = json.load(open('sltp.json', 'r'))
         self.channels = None
         self.stop = True
@@ -57,7 +54,7 @@ class WebsocketClient(object):
 
         self.stop = False
         self.keep_alive = Thread(target=self._keep_alive)
-        self.thread = Thread(target=_go())
+        self.thread = Thread(target=_go)
         self.thread.start()
 
     def _connect(self):
@@ -68,8 +65,9 @@ class WebsocketClient(object):
 
         params = {'type': 'subscribe', 'product_ids': products, 'channels': self.channels}
 
-        self.ws = create_connection(self.url)
+        self.ws = create_connection(self.WS_URL)
         self.ws.send(json.dumps(params))
+        self.on_open()
 
     def _keep_alive(self, interval=30):
         while self.ws.connected:
@@ -112,68 +110,54 @@ class WebsocketClient(object):
         print("\n-- Socket Closed --")
 
     def on_message(self, msg):
-        self.prices[msg['product_id']] = msg['price']
+        try:
+            self.prices[msg['product_id']] = float(msg['price'])
+        except KeyError:
+            pass
 
     def on_error(self, e, data=None):
         self.error = e
         self.stop = True
-        print('{} - data: {}'.format(e, data))
+        print(f'{e} - data: {data}')
 
 
-class StopLossTakeProfit:
+class StopLossTakeProfit(WebsocketClient):
 
-    def __init__(self):
-        self.sltp = json.load(open('sltp.json', 'r'))
-        self.prices = dict()
+    def __init__(self, sandbox=False):
+        super().__init__()
+        self.stop_loss = None
+        self.sandbox = sandbox
 
-        self.loop = asyncio.get_event_loop()
+        if self.sandbox:
+            self.headers = CoinbaseAuth(os.getenv('sandbox_key'), os.getenv('sandbox_secret'),
+                                        os.getenv('sandbox_passphrase'))
+            self.WS_URL = 'wss://ws-feed-public.sandbox.exchange.coinbase.com'
+            self.API_URL = 'https://api-public.sandbox.exchange.coinbase.com'
+        else:
+            self.headers = CoinbaseAuth(os.getenv('key'), os.getenv('secret'), os.getenv('passphrase'))
 
-        self.loop.create_task(self.coin_ticker())
-        self.loop.create_task(self.stop_loss())
-        self.loop.create_task(self.take_profit())
-        self.loop.run_forever()
+    def start(self):
+        super().start()
+        self.stop_loss = Thread(target=self._stop_loss)
+        self.stop_loss.start()
 
-    def json_to_file(self):
-        with open('sltp.json', 'w+') as file:
-            json.dump(self.sltp, file)
-
-    async def coin_ticker(self):
-        async with connect(WS_URI, ping_interval=None) as ws:
-            print('t')
-            data = {
-                'type': 'subscribe',
-                'channels': ['ticker'],
-                'product_ids': [f'{coin.upper()}-{curr.upper()}' for coin, curr in self.sltp.items()],
-            }
-            await ws.send(json.dumps(data))
-            await ws.recv()
-            while True:
-                print('t')
-                await asyncio.sleep(1)
-                ticker = json.loads(await ws.recv())
-                self.prices[ticker['product_id']] = float(ticker['price'])
-
-    @staticmethod
-    async def unsubscribe():
-        async with connect(WS_URI) as ws:
-            data = {
-                'type': 'unsubscribe',
-                'channels': ['heartbeat']
-            }
-            await ws.send(json.dumps(data))
-
-    async def stop_loss(self):
+    def _stop_loss(self):
         payload = {
-            "type": "limit",
-            "side": "buy",
+            "type": "market",
+            "side": "sell",
             "stp": "dc",
         }
-        while True:
+        url = f'{self.API_URL}/orders'
+        while not self.stop:
             for key in self.prices.keys():
-                if self.prices[key] <= self.sltp[key]['stop_loss']:
-                    payload['price'] = self.sltp[key]['stop_loss']
-                    response = request('POST', API_URI, json=payload, headers=headers)
-                    print(response)
+                if self.prices[key] <= self._products[key]['stop_loss']:
+                    # payload['price'] = self._products[key]['stop_loss'] # TODO add support for limit sell
+                    payload['product_id'] = key
+                    payload['size'] = 1
+                    response = request('POST', url, json=payload, auth=self.headers)
+                    if response.status_code == 401:
+                        print()
+                    print(response.content)
 
     async def take_profit(self):
         payload = {

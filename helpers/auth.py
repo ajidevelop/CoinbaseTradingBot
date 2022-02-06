@@ -1,4 +1,4 @@
-import base64, hmac, hashlib, time, requests
+import base64, hmac, hashlib, time
 from requests.auth import AuthBase
 
 
