@@ -171,16 +171,25 @@ class StopLossTakeProfit(WebsocketClient):
 
                     self.remove_pair(key)
 
-    async def take_profit(self):
+    def take_profit(self):
         payload = {
-            "type": "limit",
-            "side": "buy",
+            "type": "market",
+            "side": "sell",
             "stp": "dc",
-            "stop": "loss",
         }
-        while True:
-            for key in self._prices.keys():
-                if self._prices[key] >= self.sltp[key]['take_profit']:
-                    payload['price'] = self.sltp[key]['take_profit']
-                    response = request('POST', API_URI, json=payload, headers=headers)
-                    print(response)
+        url = f'{self.API_URL}/orders'
+        while not self.stop:
+            for key in list(self._prices.keys()):
+                if key not in self._products.keys():
+                    del self._prices[key]
+                    continue
+
+                if self._prices[key] >= self._products[key]['take_profit']:
+                    # payload['price'] = self._products[key]['take_profit'] # TODO add support for limit sell
+                    payload['product_id'] = key
+                    payload['size'] = 1
+                    response = request('POST', url, json=payload, auth=self.headers)
+                    print(response.content)
+
+                    if response.status_code == 401:
+                        self.on_error(response.status_code, response.content)
