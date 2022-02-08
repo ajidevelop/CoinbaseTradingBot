@@ -15,7 +15,6 @@ WS_URI = 'wss://ws-feed.exchange.coinbase.com'
 # API_URI =
 
 
-
 class WebsocketClient(object):
     def __init__(self):
         self.WS_URL = 'wss://ws-feed.exchange.coinbase.com'
@@ -28,6 +27,9 @@ class WebsocketClient(object):
         self.keep_alive = None
         self.error = None
         self._prices = dict()
+
+    def get_orders(self) -> dict:
+        return self._products
 
     def add_pair(self, pair: dict):  # TODO: Add support for multi-add (take a list and loop through to add into a temp dict then subscribe after)
         self._products[pair['product_id'].upper()] = pair['sltp']
@@ -126,6 +128,7 @@ class StopLossTakeProfit(WebsocketClient):
 
     def __init__(self, sandbox=False):
         super().__init__()
+        self.take_profit = None
         self.stop_loss = None
         self.sandbox = sandbox
 
@@ -141,10 +144,13 @@ class StopLossTakeProfit(WebsocketClient):
         super().start()
         self.stop_loss = Thread(target=self._stop_loss)
         self.stop_loss.start()
+        # self.take_profit = Thread(target=self._take_profit)
+        # self.take_profit.start()
 
     def close(self):
         super().close()
         self.stop_loss.join()
+        # self.take_profit.join()
 
     def _stop_loss(self):
         payload = {
@@ -165,31 +171,47 @@ class StopLossTakeProfit(WebsocketClient):
                     payload['size'] = 1
                     response = request('POST', url, json=payload, auth=self.headers)
                     print(response.content)
+                    print('-- Stop Loss --')
 
                     if response.status_code == 401:
                         self.on_error(response.status_code, response.content)
 
                     self.remove_pair(key)
-
-    def take_profit(self):
-        payload = {
-            "type": "market",
-            "side": "sell",
-            "stp": "dc",
-        }
-        url = f'{self.API_URL}/orders'
-        while not self.stop:
-            for key in list(self._prices.keys()):
-                if key not in self._products.keys():
-                    del self._prices[key]
-                    continue
-
-                if self._prices[key] >= self._products[key]['take_profit']:
+                elif self._prices[key] >= float(list(self._products[key]['take_profit'].items())[0]):
                     # payload['price'] = self._products[key]['take_profit'] # TODO add support for limit sell
                     payload['product_id'] = key
-                    payload['size'] = 1
+                    payload['size'] = float(list(self._products[key]['take_profit'].keys())[0])
                     response = request('POST', url, json=payload, auth=self.headers)
                     print(response.content)
+                    print('-- Take Profit --')
 
                     if response.status_code == 401:
                         self.on_error(response.status_code, response.content)
+
+
+    # def _take_profit(self):
+    #     """
+    #     _products['BTC-USD']['take_profit'] = { 1: 43000, 1.5: 43500, .4: 44500 }
+    #     :return:
+    #     """
+    #     payload = {
+    #         "type": "market",
+    #         "side": "sell",
+    #         "stp": "dc",
+    #     }
+    #     url = f'{self.API_URL}/orders'
+    #     while not self.stop:
+    #         for key in list(self._prices.keys()):
+    #             if key not in self._products.keys():
+    #                 del self._prices[key]
+    #                 continue
+    #
+    #             if self._prices[key] >= self._products[key]['take_profit'].items()[0]:
+    #                 # payload['price'] = self._products[key]['take_profit'] # TODO add support for limit sell
+    #                 payload['product_id'] = key
+    #                 payload['size'] = self._products[key]['take_profit'].keys()[0]
+    #                 response = request('POST', url, json=payload, auth=self.headers)
+    #                 print(response.content)
+    #
+    #                 if response.status_code == 401:
+    #                     self.on_error(response.status_code, response.content)
