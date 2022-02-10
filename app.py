@@ -13,6 +13,4 @@ def get_orders():
 
 @app.post('/new_order')
 def new_order(coin_pair, sl, tp):
-    pass
-
-
+    stop_loss.add_pair(coin_pair)

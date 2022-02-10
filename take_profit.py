@@ -32,6 +32,10 @@ class WebsocketClient(object):
         return self._products
 
     def add_pair(self, pair: dict):  # TODO: Add support for multi-add (take a list and loop through to add into a temp dict then subscribe after)
+        """
+        :param pair: { 'product_id': 'BTC-USD', sltp
+        :return:
+        """
         self._products[pair['product_id'].upper()] = pair['sltp']
         json.dump(self._products, open('sltp.json', 'r'))
         self.ws.send(json.dumps({
