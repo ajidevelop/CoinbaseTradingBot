@@ -12,12 +12,17 @@
     We are using Node.js <span id="node-version"></span>,
     Chromium <span id="chrome-version"></span>,
     and Electron <span id="electron-version"></span>.
-    <form>
+    <form id="coin-form">
       <label for="coin-one"></label>
-      <input type="number" id="coin-one" placeholder="BTC">
+      <input type="text" id="coin-one" placeholder="BTC">
       <label for="coin-two"></label>
-      <input type="number" id="coin-two" placeholder="USD">
+      <input type="text" id="coin-two" placeholder="USD">
+      <label for="stop_loss"></label>
+      <input type="number" id="stop_loss" placeholder="Entry">
+      <label for="exit"></label>
+      <input type="number" id="exit" placeholder="Exit">
       <button type="submit">Submit</button>
     </form>
   </body>
+  <script src="renderer.js"></script>
 </html>
