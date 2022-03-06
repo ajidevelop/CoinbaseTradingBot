@@ -1,3 +1,5 @@
 .env
 .idea/
 electron-app/node_modules/
+venv/
+sltp.json
