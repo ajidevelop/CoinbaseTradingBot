@@ -33,7 +33,7 @@ class WebsocketClient(object):
 
     def add_pair(self, pair: dict):  # TODO: Add support for multi-add (take a list and loop through to add into a temp dict then subscribe after)
         """
-        :param pair: { 'product_id': 'BTC-USD', sltp
+        :param pair: { 'product_id': 'BTC-USD', 'sltp': { 'stop_loss': 42000, 'take_profit': { 1: 43000, 2: 45000 }}
         :return:
         """
         self._products[pair['product_id'].upper()] = pair['sltp']
