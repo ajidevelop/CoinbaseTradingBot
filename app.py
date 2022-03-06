@@ -1,6 +1,7 @@
-from flask import Flask
+from app_config import app
+
+from flask import request
 from take_profit import StopLossTakeProfit
-app = Flask(__name__)
 
 stop_loss = StopLossTakeProfit(sandbox=True)
 stop_loss.start()
@@ -12,5 +13,10 @@ def get_orders():
 
 
 @app.post('/new_order')
-def new_order(coin_pair, sl, tp):
-    stop_loss.add_pair(coin_pair)
+def new_order():
+    stop_loss.add_pair(request.json)
+    return {'200': '200'}
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
