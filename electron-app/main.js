@@ -1,12 +1,13 @@
-const { app, BrowserWindow, ipcMain, ipcRenderer } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path');
+const service = require('./helpers/service')
 
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js")
+      preload: path.join(__dirname, "/helpers/preload.js")
     }
   })
 
@@ -22,8 +23,6 @@ app.whenReady().then(() => {
   })
 })
 
-ipcMain.on('coin-info', (event, arg) => {
-  console.log(arg)
-}).on('toMain', (event, arg) => {
-  console.log(arg)
+ipcMain.on('toMain', (event, arg) => {
+  service.newCoinPair(arg)
 })
