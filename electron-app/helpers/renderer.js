@@ -3,6 +3,8 @@ window.api.receive("fromMain", (data) => {
 });
 
 document.getElementById('coin-form').addEventListener('submit', (event) => {
+	console.log('test')
+
 	event.preventDefault();
 	let coin1 = document.getElementById('coin-one').value.toUpperCase()
 	let coin2 = document.getElementById('coin-two').value.toUpperCase()
