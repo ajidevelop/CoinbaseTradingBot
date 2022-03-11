@@ -5,7 +5,6 @@ axios.defaults.headers.post['Content-Type'] = 'application/json'
 function newCoinPair(data) {
 	console.log(data)
 	axios.post('new_order', {data: data}).then(r  => {
-		console.log(r)
 	})
  }
 

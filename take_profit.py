@@ -4,6 +4,7 @@ import time
 
 from threading import Thread
 from helpers.auth import CoinbaseAuth
+from helpers.coinbase_api import CoinbaseApi
 from requests import request
 from websocket import create_connection
 from dotenv import load_dotenv
@@ -11,14 +12,9 @@ from dotenv import load_dotenv
 load_dotenv('.env')
 
 
-WS_URI = 'wss://ws-feed.exchange.coinbase.com'
-# API_URI =
-
-
-class WebsocketClient(object):
+class WebsocketClient:
     def __init__(self):
         self.WS_URL = 'wss://ws-feed.exchange.coinbase.com'
-        self.API_URL = 'https://api.exchange.coinbase.com'
         self._products = json.load(open('sltp.json', 'r'))
         self.channels = None
         self.stop = True
@@ -128,7 +124,7 @@ class WebsocketClient(object):
         print(f'{e} - data: {data}')
 
 
-class StopLossTakeProfit(WebsocketClient):
+class StopLossTakeProfit(WebsocketClient, CoinbaseApi):
 
     def __init__(self, sandbox=False):
         super().__init__()
@@ -141,8 +137,7 @@ class StopLossTakeProfit(WebsocketClient):
                                         os.getenv('sandbox_passphrase'))
             self.WS_URL = 'wss://ws-feed-public.sandbox.exchange.coinbase.com'
             self.API_URL = 'https://api-public.sandbox.exchange.coinbase.com'
-        else:
-            self.headers = CoinbaseAuth(os.getenv('key'), os.getenv('secret'), os.getenv('passphrase'))
+
 
     def start(self):
         super().start()
@@ -162,7 +157,6 @@ class StopLossTakeProfit(WebsocketClient):
             "side": "sell",
             "stp": "dc",
         }
-        url = f'{self.API_URL}/orders'
         while not self.stop:
             for key in list(self._prices.keys()):
                 if key not in self._products.keys():
@@ -173,7 +167,7 @@ class StopLossTakeProfit(WebsocketClient):
                     # payload['price'] = self._products[key]['stop_loss'] # TODO add support for limit sell
                     payload['product_id'] = key
                     payload['size'] = 1
-                    response = request('POST', url, json=payload, auth=self.headers)
+                    response = self.place_order(payload)
                     print(response.content)
                     print('-- Stop Loss --')
 
@@ -185,7 +179,7 @@ class StopLossTakeProfit(WebsocketClient):
                     # payload['price'] = self._products[key]['take_profit'] # TODO add support for limit sell
                     payload['product_id'] = key
                     payload['size'] = float(list(self._products[key]['take_profit'].keys())[0])
-                    response = request('POST', url, json=payload, auth=self.headers)
+                    response = self.place_order(payload)
                     print(response.content)
                     print('-- Take Profit --')
 
