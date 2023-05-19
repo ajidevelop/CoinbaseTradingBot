@@ -26,3 +26,5 @@ class CoinbaseAuth(AuthBase):
             'CB-ACCESS-PASSPHRASE': self.passphrase
         })
         return request
+
+print('test')
