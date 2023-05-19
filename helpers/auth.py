@@ -27,3 +27,4 @@ class CoinbaseAuth(AuthBase):
         })
         return request
 
+print('test')
