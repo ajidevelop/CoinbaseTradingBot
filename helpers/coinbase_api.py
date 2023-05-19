@@ -18,3 +18,4 @@ class CoinbaseApi:
         url = f'{self.API_URL}/orders'
         response = request('POST', url, json=payload, auth=self.headers)
         return response
+        print(1)
